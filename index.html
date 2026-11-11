@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart City</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <div class="nav-logo" onclick="navigateTo('home')" style="cursor:pointer" title="Go to Smart City Home">
+        <div class="logo-shield">🏛️</div>
+        <div>
+          <div class="logo-title">Smart City</div>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <div class="nav-links">
+        <button class="nav-link active" data-page="home" onclick="navigateTo('home')">
+          Home
+        </button>
+        <button class="nav-link" data-page="report" onclick="navigateTo('report')">
+          Report Issue
+        </button>
+        <button class="nav-link" data-page="map" onclick="navigateTo('map')">
+          City Map &amp; Feed
+        </button>
+        <button class="nav-link" data-page="tenders" onclick="navigateTo('tenders')">
+          Tender Hub
+        </button>
+        <button class="nav-link" id="nav-admin-link" data-page="admin" onclick="navigateTo('admin')" style="display:none">
+          Admin
+        </button>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="db-status-pill" id="db-status-pill" onclick="openFirestoreStatusModal()" title="Click to view Firebase Firestore Connection Status" style="cursor:pointer">
+        <span class="db-status-dot" id="db-status-dot"></span>
+        <span id="db-status-text">Firestore: Syncing...</span>
+      </div>
+
+      <div class="location-pill" id="nav-location">
+        <span class="location-dot"></span>
+        <span id="nav-location-text">Detecting location...</span>
+      </div>
+
+      <!-- IP to Localhost Helper (visible when on IP e.g. 10.2.30.51) -->
+      <button id="switchLocalhostBtn" onclick="switchToLocalhost()" class="login-btn" style="display:none;background:rgba(56,189,248,0.12);color:#38bdf8;border:1px solid rgba(56,189,248,0.3)" title="Switch to localhost where Google Sign-In is already authorized">
+        Switch to localhost
+      </button>
+
+      <!-- Login Buttons -->
+      <button id="loginBtn" onclick="googleLogin()" class="login-btn">
+        Login with Google
+      </button>
+      <button id="demoLoginBtn" onclick="demoLogin()" class="login-btn" style="background: rgba(255,255,255,0.08); color: var(--text-primary); border: 1px solid var(--border);" title="Quick demo login without Google OAuth">
+        Demo Login
+      </button>
+
+      <!-- User Profile -->
+      <div id="userProfile" style="display:none" class="user-profile">
+        <img id="userPhoto" src="" class="user-photo" alt="user">
+        <span id="userName" class="user-name"></span>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==================== MAIN PAGE VIEWS ==================== -->
+  <div class="app-views-container">
+
+    <!-- ==================== 1. HOME / LANDING PAGE ==================== -->
+    <div id="page-home" class="page-view active">
+
+      <!-- Centered Hero Section -->
+      <section class="landing-hero">
+        <div class="landing-badge">
+          <span class="location-dot"></span> Next-Gen Civic Engagement &amp; Public Transparency
+        </div>
+        <h1 class="landing-title">
+          Smart <span class="accent">City</span>
+        </h1>
+        <p class="landing-tagline">Report. Resolve. Rebuild your city.</p>
+        <p class="landing-desc">
+          Take a photo of any civic issue like potholes, water leaks, or broken streetlights, and our system will quickly send it to the right department for repair
+        </p>
+
+        <div class="landing-cta-group">
+          <button class="btn-primary" onclick="navigateTo('report')">
+            Report an Issue
+          </button>
+          <button class="btn-tender" onclick="navigateTo('tenders')">
+            Public Tender Hub
+          </button>
+          <button class="btn-secondary" onclick="navigateTo('map')">
+            Live City Map &amp; Feed
+          </button>
+        </div>
+
+        <!-- Live City Counters Strip -->
+        <div class="landing-stats-strip">
+          <div class="landing-stat-item">
+            <div class="landing-stat-num" id="hero-total">0</div>
+            <div class="landing-stat-label">Total Reports Filed</div>
+          </div>
+          <div class="landing-stat-divider"></div>
+          <div class="landing-stat-item">
+            <div class="landing-stat-num critical-val" id="hero-critical">0</div>
+            <div class="landing-stat-label">Critical Hazards</div>
+          </div>
+          <div class="landing-stat-divider"></div>
+          <div class="landing-stat-item">
+            <div class="landing-stat-num resolved-val" id="hero-resolved">0</div>
+            <div class="landing-stat-label">Issues Resolved</div>
+          </div>
+          <div class="landing-stat-divider"></div>
+          <div class="landing-stat-item">
+            <div class="landing-stat-num" id="rank-title" style="font-size:1.15rem; color:var(--accent)">Rookie Citizen</div>
+            <div class="landing-stat-label">Citizen Badge Level</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- How To Operate This Application Section -->
+      <section class="how-it-works-section">
+        <div class="section-title-wrap">
+          <span class="sub-badge">OPERATION GUIDE</span>
+          <h2 class="section-heading">How To Operate This Application</h2>
+          <p class="section-subheading">A straightforward, transparent guide for citizens, municipal authorities, and contractors</p>
+        </div>
+
+        <div class="how-steps-grid">
+          <div class="how-step-card">
+            <div class="how-step-number">01</div>
+            <div class="how-step-icon">📷</div>
+            <h3>Capture &amp; Upload</h3>
+            <p>Take a live smartphone camera photo, record video, or upload an image of any civic hazard such as potholes, streetlight failure, or garbage accumulation.</p>
+            <div class="how-step-tag">Multi-Modal Capture</div>
+          </div>
+
+          <div class="how-step-card">
+            <div class="how-step-number">02</div>
+            <div class="how-step-icon">⚡</div>
+            <h3>AI Diagnosis &amp; Routing</h3>
+            <p>Gemini Vision AI classifies the hazard, assigns a severity score (1–10), pinpoints GPS coordinates, and automatically drafts an official complaint letter for department officers.</p>
+            <div class="how-step-tag">Automated Triage</div>
+          </div>
+
+          <div class="how-step-card">
+            <div class="how-step-number">03</div>
+            <div class="how-step-icon">👥</div>
+            <h3>Community Verification</h3>
+            <p>Community neighbors upvote and verify ground reality. Reports with 3 peer verifications are officially escalated to municipal officers for prioritized field resolution.</p>
+            <div class="how-step-tag">3-Peer Consensus</div>
+          </div>
+
+          <div class="how-step-card">
+            <div class="how-step-number">04</div>
+            <div class="how-step-icon">📄</div>
+            <h3>Tenders &amp; Warranty Auditing</h3>
+            <p>Inspect public works contracts. Gemini AI decodes complex budgets into itemized cost tables, tracks contractor free-repair warranties, and drafts official RTI vigilance complaints.</p>
+            <div class="how-step-tag">Defect Liability &amp; RTI</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature Gateway Cards -->
+      <section class="portal-cards-section">
+        <div class="section-title-wrap">
+          <span class="sub-badge">EXPLORE MODULES</span>
+          <h2 class="section-heading">Choose a Section to Begin</h2>
+          <p class="section-subheading">Select any feature below to navigate directly to its dedicated page</p>
+        </div>
+
+        <div class="portal-cards-grid">
+          <div class="portal-card" onclick="navigateTo('report')">
+            <div class="portal-card-top">
+              <span class="portal-icon">📷</span>
+              <span class="portal-badge">AI Vision</span>
+            </div>
+            <h3 class="portal-title">Report a Civic Issue</h3>
+            <p class="portal-desc">Capture photos or video of community damage, detect location, get instant AI severity analysis, and generate administrative complaint letters.</p>
+            <div class="portal-btn">Launch Issue Reporter →</div>
+          </div>
+
+          <div class="portal-card" onclick="navigateTo('map')">
+            <div class="portal-card-top">
+              <span class="portal-icon">🗺️</span>
+              <span class="portal-badge">Live Geospatial</span>
+            </div>
+            <h3 class="portal-title">Live City Map &amp; Community Feed</h3>
+            <p class="portal-desc">Explore the real-time hazard map with severity pins, check neighborhood health scores, review peer-verified reports, and upvote community priorities.</p>
+            <div class="portal-btn">Open City Map &amp; Feed →</div>
+          </div>
+
+          <div class="portal-card" onclick="navigateTo('tenders')">
+            <div class="portal-card-top">
+              <span class="portal-icon">📄</span>
+              <span class="portal-badge">Public Works Transparency</span>
+            </div>
+            <h3 class="portal-title">Tender Transparency Hub</h3>
+            <p class="portal-desc">Inspect sanctioned public works orders, decode multi-crore civil budgets into plain citizen tables, verify contractor warranty terms, and file vigilance disputes.</p>
+            <div class="portal-btn">Explore Public Tenders →</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ==================== 2. REPORT AN ISSUE PAGE ==================== -->
+    <div id="page-report" class="page-view" style="display:none">
+      <div class="page-header-bar">
+        <button class="back-home-btn" onclick="navigateTo('home')">
+          ← Back to Home
+        </button>
+        <div class="page-header-text">
+          <h2>Report a Civic Issue</h2>
+          <p>Capture photo or video of public damage and let Gemini AI diagnose and route your report</p>
+        </div>
+      </div>
+
+      <div class="report-page-grid">
+        <!-- AI Issue Reporter -->
+        <div class="panel" id="report-section">
+        <div class="panel-header">
+          <div class="panel-title">
+            AI Issue Reporter
+          </div>
+          <span class="gemini-badge">Gemini Vision</span>
+        </div>
+
+        <div class="media-tabs">
+          <button class="mtab active" onclick="switchTab('upload', this)">↑ Upload</button>
+          <button class="mtab" onclick="switchTab('video', this)">▶ Video</button>
+          <button class="mtab" onclick="switchTab('live', this)">◉ Live</button>
+        </div>
+
+        <div id="tab-upload">
+          <div class="drop-zone"
+            onclick="document.getElementById('photoInput').click()"
+            ondragover="event.preventDefault()"
+            ondrop="handleDrop(event)">
+            <div class="drop-icon">↑</div>
+            <div class="drop-text">Drop a photo or tap to browse</div>
+            <div class="drop-hint">JPG, PNG or MP4 · up to 20MB</div>
+            <input type="file" id="photoInput" accept="image/*"
+              style="display:none" onchange="handlePhoto(this)">
+          </div>
+          <img id="photoPreview" style="display:none" class="media-preview">
+        </div>
+
+        <div id="tab-video" style="display:none">
+          <div class="drop-zone"
+            onclick="document.getElementById('videoInput').click()">
+            <div class="drop-icon">▶</div>
+            <div class="drop-text">Drop a video or tap to browse</div>
+            <div class="drop-hint">MP4, MOV · up to 20MB</div>
+            <input type="file" id="videoInput" accept="video/*"
+              style="display:none" onchange="handleVideo(this)">
+          </div>
+          <video id="videoPreview" controls
+            style="display:none" class="media-preview"></video>
+        </div>
+
+        <div id="tab-live" style="display:none">
+          <video id="cameraFeed" autoplay playsinline
+            class="media-preview"></video>
+          <button class="capture-btn" onclick="captureFromCamera()">
+            ◉ Capture Photo
+          </button>
+          <canvas id="captureCanvas" style="display:none"></canvas>
+        </div>
+
+        <div class="location-row">
+          <div class="loc-info">
+            <span class="loc-pin">📍</span>
+            <span id="loc-text">Location not detected</span>
+          </div>
+          <button class="loc-btn" onclick="detectLocation()">Detect</button>
+        </div>
+
+        <textarea id="description" class="desc-input"
+          placeholder="Describe the issue — location details, how long it's been here, danger level...">
+        </textarea>
+
+        <button class="analyze-btn" onclick="analyzeIssue()" id="analyzeBtn">
+          Analyze &amp; Report
+        </button>
+      </div>
+
+      <!-- AI Result Panel -->
+      <div class="panel" id="ai-result-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title">
+            AI Analysis Result
+          </div>
+          <span class="live-badge">Live</span>
+        </div>
+        <div id="ai-result-content"></div>
+
+        <!-- Complaint Letter Section -->
+        <div id="complaint-section" style="display:none;margin-top:20px">
+          <div class="panel-header" style="margin-bottom:12px">
+            <div class="panel-title">
+              AI Generated Complaint Letter
+            </div>
+            <button onclick="copyLetter()" class="copy-btn">Copy</button>
+          </div>
+          <div id="complaint-letter" class="complaint-box"></div>
+        </div>
+      </div><!-- /ai-result-panel -->
+    </div><!-- /report-page-grid -->
+  </div><!-- /page-report -->
+
+  <!-- ==================== 3. LIVE MAP & COMMUNITY FEED PAGE ==================== -->
+  <div id="page-map" class="page-view" style="display:none">
+    <div class="page-header-bar">
+      <button class="back-home-btn" onclick="navigateTo('home')">
+        ← Back to Home
+      </button>
+      <div class="page-header-text">
+        <h2>Live City Map &amp; Community Feed</h2>
+        <p>Real-time neighborhood health analytics, hazard locations, and citizen-verified reports</p>
+      </div>
+    </div>
+
+    <div class="map-page-layout">
+      <div class="map-grid-top">
+
+      <!-- Live City Map -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Live City Map
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="map-legend">
+              <span class="leg critical">● Critical</span>
+              <span class="leg high">● High</span>
+              <span class="leg medium">● Medium</span>
+              <span class="leg low">● Low</span>
+            </div>
+            <div class="map-layer-selector">
+              <select id="map-layer-select" onchange="changeMapLayer(this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.75rem;cursor:pointer">
+                <option value="google_roadmap">Google Maps (Streets)</option>
+                <option value="google_satellite">Google Satellite</option>
+                <option value="carto_dark">Dark City View</option>
+                <option value="osm">OpenStreetMap</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="map"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:0.78rem;color:var(--text2);flex-wrap:wrap;gap:6px">
+          <span>Click anywhere on the map to pin incident coordinates</span>
+          <span id="map-status-info" style="color:var(--accent);font-weight:600">Active Layer: Google Maps</span>
+        </div>
+      </div>
+      <!-- AI Predictive Insights -->
+<div class="panel" id="predictions-panel" style="display:none">
+  <div class="panel-header">
+    <div class="panel-title">
+      Predictive Maintenance Insights
+    </div>
+    <span class="gemini-badge">Gemini AI</span>
+  </div>
+  <div id="predictions-box"></div>
+</div>
+      <!-- Impact Dashboard -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Impact Dashboard
+          </div>
+        </div>
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-label">TOTAL</div>
+            <div class="dash-value" id="d-total">0</div>
+          </div>
+          <div class="dash-card critical-card">
+            <div class="dash-label">CRITICAL</div>
+            <div class="dash-value critical-val" id="d-critical">0</div>
+          </div>
+          <div class="dash-card high-card">
+            <div class="dash-label">HIGH</div>
+            <div class="dash-value high-val" id="d-high">0</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">RESOLVED</div>
+            <div class="dash-value resolved-val" id="d-resolved">0</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">VOTES</div>
+            <div class="dash-value" id="d-votes">0</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">VERIFIED</div>
+            <div class="dash-value" id="d-verified">0</div>
+          </div>
+        </div>
+
+        <!-- Area Health Score -->
+        <div class="health-score-section">
+          <div class="health-header">
+            <span class="cat-title">AREA HEALTH SCORE</span>
+            <span class="health-value" id="health-score">100</span>
+          </div>
+          <div class="health-bar-track">
+            <div class="health-bar-fill" id="health-bar" style="width:100%"></div>
+          </div>
+          <div class="health-label" id="health-label">Excellent</div>
+        </div>
+
+        <div class="categories-section">
+          <div class="cat-title">CATEGORIES</div>
+          <div id="cat-breakdown"></div>
+        </div>
+      </div><!-- /impact dashboard panel -->
+
+    </div><!-- /map-grid-top -->
+
+    <!-- COMMUNITY FEED -->
+    <section class="feed-section" id="feed-section" style="padding: 0; margin-top: 10px;">
+      <div class="feed-header">
+        <h2 class="feed-title">Community Reports</h2>
+        <div class="feed-filters">
+          <button class="feed-filter active"
+            onclick="filterFeed('all', this)">All</button>
+          <button class="feed-filter"
+            onclick="filterFeed('critical', this)">Critical</button>
+          <button class="feed-filter"
+            onclick="filterFeed('high', this)">High</button>
+          <button class="feed-filter"
+            onclick="filterFeed('new', this)">New</button>
+          <button class="feed-filter"
+            onclick="filterFeed('resolved', this)">Resolved</button>
+        </div>
+      </div>
+      <div class="feed-grid" id="feed-grid">
+        <div class="empty-feed">
+          <div class="empty-icon">🏛️</div>
+          <p>No reports filed yet in this area.</p>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /map-page-layout -->
+</div><!-- /page-map -->
+
+<!-- ==================== 4. TENDER TRANSPARENCY HUB PAGE ==================== -->
+<div id="page-tenders" class="page-view" style="display:none">
+  <div class="page-header-bar">
+    <button class="back-home-btn" onclick="navigateTo('home')">
+      ← Back to Home
+    </button>
+    <div class="page-header-text">
+      <h2>Tender Transparency &amp; Defect Liability Hub</h2>
+      <p>Public works audit, plain-language engineering cost breakdown, and contractor warranty enforcement</p>
+    </div>
+  </div>
+
+  <!-- TENDER TRANSPARENCY & AI AUDIT HUB -->
+  <section class="tender-section" id="tenders-section" style="max-width:1300px; margin: 10px auto 40px; padding: 0 20px;">
+    <div class="tender-header-wrap">
+      <div>
+        <h2 class="tender-main-title">
+          Public Tender &amp; Budget Transparency
+        </h2>
+        <p class="tender-main-sub">
+          Authorities &amp; contractors publish sanctioned public works. Gemini AI decodes complex budgets into citizen-friendly tables, and citizens can flag poor quality, delays, or cost anomalies.
+        </p>
+      </div>
+      <div class="tender-header-actions">
+        <button class="btn-publish-toggle" onclick="toggleTenderPublishForm()">
+          + Publish Tender / Work Order
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Ribbon -->
+    <div class="tender-stats-ribbon">
+      <div class="tender-stat-card active-stat">
+        <div class="t-stat-label">Active Tenders</div>
+        <div class="t-stat-num" id="t-stat-count">0</div>
+        <div class="t-stat-sub">Tracked civic projects</div>
+      </div>
+      <div class="tender-stat-card budget-stat">
+        <div class="t-stat-label">Public Budget Supervised</div>
+        <div class="t-stat-num" id="t-stat-budget">₹ 0</div>
+        <div class="t-stat-sub">Taxpayer funds audited</div>
+      </div>
+      <div class="tender-stat-card audit-stat">
+        <div class="t-stat-label">Average AI Integrity</div>
+        <div class="t-stat-num" id="t-stat-integrity">0%</div>
+        <div class="t-stat-sub">Fair pricing index</div>
+      </div>
+      <div class="tender-stat-card dispute-stat">
+        <div class="t-stat-label">Citizen Quality Flags</div>
+        <div class="t-stat-num" id="t-stat-disputes" style="color:var(--critical)">0</div>
+        <div class="t-stat-sub">Substandard work reports</div>
+      </div>
+    </div>
+
+    <!-- Authority / Contractor Publish Panel (collapsible) -->
+    <div class="tender-publish-panel" id="tender-publish-panel" style="display:none">
+      <div class="publish-panel-head">
+        <div class="publish-panel-title">
+          Authority &amp; Contractor Work Order Publisher
+        </div>
+        <button type="button" class="modal-close-btn" onclick="toggleTenderPublishForm()">✕</button>
+      </div>
+
+      <div class="publish-form-grid">
+        <div class="form-field">
+          <label>Project Title / Work Description *</label>
+          <input type="text" id="t-form-title" placeholder="e.g. Salem Main Road 4-Lane Paving &amp; Drainage">
+        </div>
+        <div class="form-field">
+          <label>Tender Reference ID *</label>
+          <input type="text" id="t-form-id" placeholder="e.g. TN-PWD-2026-T881">
+        </div>
+        <div class="form-field">
+          <label>Total Sanctioned Budget (in ₹) *</label>
+          <input type="number" id="t-form-budget" placeholder="e.g. 4500000">
+        </div>
+        <div class="form-field">
+          <label>Sanctioning Department *</label>
+          <select id="t-form-dept">
+            <option value="Public Works Department (PWD)">Public Works Department (PWD)</option>
+            <option value="City Municipal Corporation">City Municipal Corporation</option>
+            <option value="Water Supply &amp; Sewerage Board">Water Supply &amp; Sewerage Board</option>
+            <option value="Smart City Development Mission">Smart City Development Mission</option>
+            <option value="State Highways Department">State Highways Department</option>
+            <option value="Electricity Board">Electricity Board</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Contractor / Executing Agency *</label>
+          <input type="text" id="t-form-contractor" placeholder="e.g. Apex Civil Infrastructure Ltd">
+        </div>
+        <div class="form-field">
+          <label>Work Location / Ward *</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="t-form-location" placeholder="e.g. Salem Ward 14, Gandhi Road" style="flex:1">
+            <button type="button" class="loc-btn" onclick="useCurrentLocationForTender()" style="width:auto;padding:0 12px">📍 Use GPS</button>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Target Completion Date</label>
+          <input type="date" id="t-form-deadline">
+        </div>
+        <div class="form-field">
+          <label>Warranty / Defect Liability Period (DLP)</label>
+          <input type="text" id="t-form-warranty" placeholder="e.g. 36 Months Free Contractor Maintenance">
+        </div>
+      </div>
+
+      <div class="form-field" style="margin-bottom:16px">
+        <label>Work Specifications / Bill of Quantities (BOQ) Details</label>
+        <textarea id="t-form-specs" rows="3" placeholder="Enter key material specs (e.g. 50mm Bituminous Concrete, M25 grade cement, 1.2km length) or let Gemini extract it from the uploaded document..."></textarea>
+      </div>
+
+      <!-- Drag & drop doc -->
+      <div class="tender-doc-dropzone" onclick="document.getElementById('t-form-doc').click()">
+        <div style="font-size:1.6rem;margin-bottom:6px">📄</div>
+        <div style="font-weight:700;color:var(--text)">Attach Official Tender Document / Notice Board Photo</div>
+        <div style="font-size:0.78rem;color:var(--text2);margin-top:4px">Upload JPG, PNG or PDF of work board on street (optional)</div>
+        <input type="file" id="t-form-doc" accept="image/*,.pdf" style="display:none" onchange="handleTenderDocFile(this)">
+        <div id="t-doc-preview" style="display:none;color:var(--accent);font-weight:600;font-size:0.85rem;margin-top:8px"></div>
+      </div>
+
+      <div class="publish-actions">
+        <button type="button" class="btn-secondary" onclick="toggleTenderPublishForm()">Cancel</button>
+        <button type="button" class="btn-ai-decode" id="publishTenderBtn" onclick="submitTenderByAuthority()">
+          Decode, Audit &amp; Publish with AI
+        </button>
+      </div>
+    </div>
+
+    <!-- Search & Filters Toolbar -->
+    <div class="tender-toolbar">
+      <div class="tender-search-box">
+        <span class="tender-search-icon">🔍</span>
+        <input type="text" id="tender-search-input" placeholder="Search by project name, contractor, road, or tender ID..." oninput="handleTenderSearch(this.value)">
+      </div>
+      <div class="tender-filter-pills">
+        <button class="t-pill active" onclick="filterTenders('all', this)">All Tenders</button>
+        <button class="t-pill" onclick="filterTenders('in_progress', this)">In Progress</button>
+        <button class="t-pill" onclick="filterTenders('sanctioned', this)">Sanctioned</button>
+        <button class="t-pill" onclick="filterTenders('completed', this)">Completed</button>
+        <button class="t-pill" onclick="filterTenders('disputed', this)">Has Disputes</button>
+      </div>
+    </div>
+
+    <!-- Tenders Grid -->
+    <div class="tenders-grid" id="tenders-grid"></div>
+  </section>
+</div><!-- /page-tenders -->
+
+<!-- ==================== 5. ADMIN PORTAL PAGE ==================== -->
+<div id="page-admin" class="page-view" style="display:none">
+  <div class="page-header-bar">
+    <button class="back-home-btn" onclick="navigateTo('home')">
+      ← Back to Home
+    </button>
+    <div class="page-header-text">
+      <h2>Municipal Administrative Portal</h2>
+      <p>Official resolution management, critical escalations, and report moderation</p>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <section class="admin-panel" id="admin-panel" style="max-width:1300px; margin: 10px auto 40px; padding: 0 20px;">
+    <div class="admin-header">
+      <h2>Official Moderation Feed</h2>
+      <span class="admin-badge">Admin Access</span>
+    </div>
+    <div class="admin-stats">
+      <div class="admin-stat">
+        <div class="a-num" id="a-total">0</div>
+        <div class="a-label">Total Reports</div>
+      </div>
+      <div class="admin-stat">
+        <div class="a-num" id="a-pending">0</div>
+        <div class="a-label">Pending</div>
+      </div>
+      <div class="admin-stat">
+        <div class="a-num" id="a-resolved">0</div>
+        <div class="a-label">Resolved</div>
+      </div>
+    </div>
+    <div id="admin-feed"></div>
+  </section>
+</div><!-- /page-admin -->
+
+</div><!-- /app-views-container -->
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <span class="logo-shield">🏛️</span>
+            <span class="footer-logo-title">Smart City</span>
+          </div>
+          <p class="footer-desc">
+            Empowering citizens and municipal authorities to build transparent, safer, and cleaner communities together through real-time civic issue reporting and public tender transparency.
+          </p>
+          <div class="footer-pill">
+            <span class="location-dot"></span> Civic Engagement &amp; Public Transparency
+          </div>
+        </div>
+
+        <div class="footer-links-grid">
+          <div class="footer-col">
+            <div class="footer-col-title">Quick Links</div>
+            <ul class="footer-links">
+              <li><a href="javascript:void(0)" onclick="scrollToReport()">Report an Issue</a></li>
+              <li><a href="javascript:void(0)" onclick="scrollToTenders()">Tender Transparency</a></li>
+              <li><a href="javascript:void(0)" onclick="scrollToFeed()">Community Feed</a></li>
+              <li><a href="javascript:void(0)" onclick="document.getElementById('map').scrollIntoView({behavior:'smooth'})">Live City Map</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <div class="footer-col-title">Public Works &amp; AI</div>
+            <ul class="footer-links">
+              <li><a href="javascript:void(0)" onclick="scrollToTenders()">Tender Cost Decoder</a></li>
+              <li><a href="javascript:void(0)" onclick="scrollToTenders()">Defect Liability Period</a></li>
+              <li><a href="javascript:void(0)" onclick="scrollToTenders()">Official Vigilance &amp; RTI</a></li>
+              <li><a href="javascript:void(0)" onclick="scrollToReport()">Multi-Modal Issue Analysis</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <div class="footer-col-title">Community Action</div>
+            <ul class="footer-links">
+              <li><span>3-Peer Crowdsourced Verification</span></li>
+              <li><span>Live Neighborhood Health Score</span></li>
+              <li><span>Direct Department Routing</span></li>
+              <li><span>Contractor Warranty Tracking</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div class="footer-copyright">
+          all rights reserved, copyright NIT JAMSHEDPUR 2026
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- TENDER COST BREAKDOWN & DETAIL MODAL -->
+  <div class="tender-modal-overlay" id="tender-detail-modal">
+    <div class="tender-modal-content">
+      <div class="t-modal-header">
+        <div>
+          <div class="t-modal-title" id="tm-title">Tender Details</div>
+          <div class="t-modal-subtitle">
+            <span id="tm-id-tag" class="tender-id-tag">ID</span>
+            <span id="tm-dept">Department</span>
+            <span id="tm-contractor">Contractor</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeTenderDetailModal()">✕</button>
+      </div>
+      <div class="t-modal-body">
+        <!-- Key Metrics Strip -->
+        <div class="tender-metrics-box" style="margin-bottom:20px">
+          <div class="t-metric-item">
+            <span class="t-metric-label">Sanctioned Budget</span>
+            <span class="t-metric-val budget-val" id="tm-budget">₹ 0</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-metric-label">Contractor / Agency</span>
+            <span class="t-metric-val" id="tm-contractor-name">-</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-metric-label">Completion Target</span>
+            <span class="t-metric-val" id="tm-deadline">-</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-metric-label">AI Integrity Score</span>
+            <span class="t-metric-val" id="tm-integrity-score" style="color:var(--accent)">-</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;margin-bottom:6px">
+          <h3 style="font-size:1.1rem;font-weight:700;color:var(--text)">
+            Gemini AI Cost &amp; Material Breakdown Table
+          </h3>
+          <span style="font-size:0.75rem;background:rgba(0,229,160,0.1);color:var(--accent);padding:3px 10px;border-radius:20px;font-weight:600">
+            AI Decoded
+          </span>
+        </div>
+        <p style="font-size:0.83rem;color:var(--text2);margin-bottom:14px">
+          Every rupee explained in plain terms so citizens know exactly what materials, machines, and warranties were paid for.
+        </p>
+
+        <!-- Gemini Table Container -->
+        <div class="tender-table-container">
+          <table class="gemini-tender-table">
+            <thead>
+              <tr>
+                <th>Work Component</th>
+                <th>Sanctioned Amount</th>
+                <th>Share</th>
+                <th>Technical Quality Specs</th>
+                <th>Citizen Explanation</th>
+              </tr>
+            </thead>
+            <tbody id="tm-table-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Warranty Box -->
+        <div class="warranty-box">
+          <div class="warranty-icon">🏛️</div>
+          <div>
+            <div class="warranty-title">Contractor Warranty &amp; Defect Liability Period (DLP)</div>
+            <div class="warranty-desc" id="tm-warranty-desc">
+              Contractor is legally bound to repair any potholes, surface cracking, or drainage failures at zero additional cost to the public.
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Red-Flag / Anomaly Checklist -->
+        <div class="red-flags-box" id="tm-redflags-box">
+          <div class="red-flags-title">
+            AI Integrity Audit &amp; Risk Checklist
+          </div>
+          <ul class="red-flag-list" id="tm-redflags-list"></ul>
+        </div>
+
+        <!-- Citizen Disputes on this Tender -->
+        <div class="disputes-list-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h4 style="font-size:1rem;font-weight:700;color:var(--text)">
+              Citizen Quality Flags &amp; Field Disputes (<span id="tm-disputes-count">0</span>)
+            </h4>
+            <button class="btn-flag-tender" id="tm-report-dispute-btn">
+              + Report Issue with this Tender
+            </button>
+          </div>
+          <div id="tm-disputes-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TENDER DISPUTE REPORTING MODAL -->
+  <div class="tender-modal-overlay" id="tender-dispute-modal">
+    <div class="tender-modal-content" style="max-width:680px">
+      <div class="t-modal-header">
+        <div>
+          <div class="t-modal-title">Report Tender Issue / Quality Violation</div>
+          <div class="t-modal-subtitle" id="tdm-subtitle">Reporting issue against Tender</div>
+        </div>
+        <button class="modal-close-btn" onclick="closeTenderDisputeModal()">✕</button>
+      </div>
+      <div class="t-modal-body">
+        <div class="form-field" style="margin-bottom:16px">
+          <label>Dispute Category *</label>
+          <select id="tdm-category">
+            <option value="Substandard Material Quality">Substandard Material / Thin Layer Paving</option>
+            <option value="Work Delayed / Abandoned">Work Abandoned / Past Contract Deadline</option>
+            <option value="Ghost Project (No Work Done)">Ghost Project (Billed on Paper, No Work on Ground)</option>
+            <option value="Inflated Cost / Fund Misallocation">Inflated Cost / Suspicious Budget Item</option>
+            <option value="Pothole / Damage Within Warranty">Pothole / Damage Within Contractor Warranty</option>
+            <option value="Safety Hazard / Incomplete Barrier">Safety Hazard / Incomplete Public Safety Measures</option>
+          </select>
+        </div>
+
+        <div class="form-field" style="margin-bottom:16px">
+          <label>Explain the ground reality &amp; violation *</label>
+          <textarea id="tdm-description" rows="4" placeholder="Describe the defect or violation: e.g. 'The contractor used only thin loose gravel instead of 50mm bitumen. Potholes have already formed 2 weeks after paving...'"></textarea>
+        </div>
+
+        <!-- Photo Evidence Attachment -->
+        <div class="form-field" style="margin-bottom:18px">
+          <label>Attach Photo / Video Proof from Location</label>
+          <div class="tender-doc-dropzone" style="padding:16px" onclick="document.getElementById('tdm-photo').click()">
+            <div style="font-size:1.4rem">📷</div>
+            <div style="font-weight:600;font-size:0.86rem;color:var(--text)">Take or Upload Photo of on-ground work</div>
+            <input type="file" id="tdm-photo" accept="image/*" style="display:none" onchange="handleDisputePhoto(this)">
+            <img id="tdm-photo-preview" style="display:none;max-height:160px;margin:10px auto 0;border-radius:8px">
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px">
+          <button type="button" class="btn-secondary" onclick="closeTenderDisputeModal()">Cancel</button>
+          <button type="button" class="btn-flag-tender" id="submitDisputeBtn" onclick="submitTenderDisputeAction()" style="background:var(--critical);color:#fff">
+            Submit Citizen Dispute &amp; Generate Vigilance Notice
+          </button>
+        </div>
+
+        <!-- Generated Vigilance / RTI Box -->
+        <div id="tdm-rti-container" style="display:none;margin-top:24px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-weight:700;font-size:0.88rem;color:#38bdf8">
+              Gemini AI Generated Official Vigilance / RTI Notice
+            </span>
+            <button type="button" class="copy-btn" onclick="copyRTILetter()">Copy Notice</button>
+          </div>
+          <div class="rti-letter-box" id="tdm-rti-letter"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRESTORE STATUS & DIAGNOSTICS MODAL -->
+  <div class="tender-modal-overlay" id="firestore-status-modal">
+    <div class="tender-modal-content" style="max-width:580px">
+      <div class="t-modal-header">
+        <div>
+          <div class="t-modal-title">Firebase Firestore Connection Status</div>
+          <div class="t-modal-subtitle" id="fsm-project-id">Connected Project: capstone26-7th</div>
+        </div>
+        <button class="modal-close-btn" onclick="closeFirestoreStatusModal()">✕</button>
+      </div>
+      <div class="t-modal-body">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px">
+          <span class="db-status-dot" id="fsm-dot" style="width:12px;height:12px"></span>
+          <div>
+            <div style="font-weight:700;color:var(--text)" id="fsm-status-title">Checking Firestore Connection...</div>
+            <div style="font-size:0.82rem;color:var(--text2);margin-top:2px" id="fsm-status-desc">Synchronizing with Firebase Cloud Firestore...</div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <h4 style="font-size:0.92rem;font-weight:700;color:var(--text);margin-bottom:8px">Firebase Console Setup Guide:</h4>
+          <ol style="font-size:0.84rem;color:var(--text2);line-height:1.6;padding-left:20px;margin-bottom:10px">
+            <li><strong>Enable Firestore:</strong> Go to <a href="https://console.firebase.google.com/project/capstone26-7th/firestore" target="_blank" style="color:var(--accent);text-decoration:underline">Firebase Console &gt; Firestore Database</a> and click <em>Create Database</em> (select any region e.g. asia-south1).</li>
+            <li><strong>Development Security Rules:</strong> In the <em>Rules</em> tab, allow read and write during development:</li>
+          </ol>
+          <pre style="background:#0b1320;padding:12px;border-radius:8px;font-size:0.8rem;color:#38bdf8;border:1px solid var(--border);margin-top:4px;overflow-x:auto;user-select:all">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+          <button type="button" class="btn-secondary" onclick="closeFirestoreStatusModal()">Close</button>
+          <button type="button" class="btn-primary" onclick="testFirestoreConnectionAgain()" style="width:auto;padding:8px 18px">Test Connection Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOOGLE AUTH DOMAIN HELPER MODAL -->
+  <div class="tender-modal-overlay" id="auth-domain-modal">
+    <div class="tender-modal-content" style="max-width:540px">
+      <div class="t-modal-header">
+        <div>
+          <div class="t-modal-title">Authorize Domain for Google Sign-In</div>
+          <div class="t-modal-subtitle">Current Host: <span id="adm-current-host" style="color:var(--accent)">10.2.30.51</span></div>
+        </div>
+        <button class="modal-close-btn" onclick="closeAuthDomainModal()">✕</button>
+      </div>
+      <div class="t-modal-body">
+        <p style="font-size:0.86rem;color:var(--text2);margin-bottom:16px;line-height:1.5">
+          Firebase restricts Google OAuth to whitelisted domains for security. Because you accessed via IP address <strong style="color:var(--text)" id="adm-host-label">10.2.30.51</strong>, choose how you would like to proceed:
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+          <button type="button" class="btn-primary" onclick="switchToLocalhost()" style="text-align:left;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;width:100%">
+            <div>
+              <div style="font-weight:700">1. Switch to localhost (Recommended)</div>
+              <div style="font-size:0.75rem;opacity:0.85;margin-top:2px">localhost is pre-authorized by Firebase out of the box</div>
+            </div>
+            <span style="font-size:1.1rem">→</span>
+          </button>
+
+          <button type="button" class="btn-secondary" onclick="loginDemoAndClose()" style="text-align:left;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;width:100%">
+            <div>
+              <div style="font-weight:700">2. Instant Sign-In (Demo Resident)</div>
+              <div style="font-size:0.75rem;color:var(--text2);margin-top:2px">Test all features right away without modifying Firebase settings</div>
+            </div>
+            <span style="font-size:1.1rem">✓</span>
+          </button>
+
+          <a href="https://console.firebase.google.com/project/capstone26-7th/authentication/settings" target="_blank" class="btn-secondary" style="text-align:left;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;text-decoration:none;width:100%;box-sizing:border-box">
+            <div>
+              <div style="font-weight:700">3. Add IP to Firebase Console Settings</div>
+              <div style="font-size:0.75rem;color:var(--text2);margin-top:2px">Add your IP to Authorized Domains for permanent access from any device</div>
+            </div>
+            <span style="font-size:1.1rem">↗</span>
+          </a>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end">
+          <button type="button" class="btn-secondary" onclick="closeAuthDomainModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <!-- Optional Local Config (for Gemini API Key) -->
+  <script src="config.js"></script>
+
+  <script src="app.js"></script>
+</body>
+</html>
